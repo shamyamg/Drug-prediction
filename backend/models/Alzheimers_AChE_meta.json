@@ -1,0 +1,15 @@
+{
+    "target_key": "Alzheimers_AChE",
+    "target_name": "Acetylcholinesterase (AChE)",
+    "chembl_id": "CHEMBL220",
+    "description": "Enzyme that degrades acetylcholine. Inhibitors (like Donepezil) increase neurotransmitter levels, treating Alzheimer's symptoms.",
+    "dataset_size": 212,
+    "actives_count": 67,
+    "inactives_count": 145,
+    "metrics": {
+        "accuracy": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+    }
+}

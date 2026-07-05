@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PharmAI: AI-Powered Drug Discovery & Virtual Screening</title>
+    
+    <!-- SEO and Stylesheets -->
+    <meta name="description" content="A state-of-the-art machine learning platform for virtual screening of chemical compounds and bioactivity prediction.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="src/index.css">
+
+    <!-- Libraries (CDNs) -->
+    <!-- Chart.js for visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- 3Dmol.js for interactive 3D structures -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/3dmol/2.0.4/3Dmol-min.js"></script>
+    <!-- SmilesDrawer for 2D molecular formulas -->
+    <script src="https://unpkg.com/smiles-drawer@2.0.1/dist/smiles-drawer.min.js"></script>
+</head>
+<body>
+
+    <div class="glass-bg-glow"></div>
+
+    <div class="app-container">
+        <!-- Sidebar / Navigation -->
+        <aside class="sidebar">
+            <div class="brand">
+                <i class="fa-solid fa-flask-vial brand-icon"></i>
+                <div class="brand-text">
+                    <h1>PharmAI</h1>
+                    <span>Bio-ML Engine v1.0</span>
+                </div>
+            </div>
+            
+            <nav class="nav-menu">
+                <button class="nav-item active" id="tab-analyze" onclick="switchTab('analyze')">
+                    <i class="fa-solid fa-microscope"></i> Molecule Analyzer
+                </button>
+                <button class="nav-item" id="tab-screen" onclick="switchTab('screen')">
+                    <i class="fa-solid fa-bolt"></i> Virtual Screening
+                </button>
+                <button class="nav-item" id="tab-targets" onclick="switchTab('targets')">
+                    <i class="fa-solid fa-dna"></i> Disease Targets
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="status-indicator">
+                    <span class="pulse-dot green" id="api-status-dot"></span>
+                    <span id="api-status-text">Connecting to Backend...</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="app-header">
+                <div class="header-title">
+                    <h2 id="page-title">Molecule Analyzer</h2>
+                    <p id="page-description">Predict biological activity and inspect molecular structure against target proteins.</p>
+                </div>
+                <div class="user-profile">
+                    <span class="badge badge-accent">Final Year Project</span>
+                </div>
+            </header>
+
+            <!-- TAB 1: MOLECULE ANALYZER -->
+            <section id="view-analyze" class="content-view active">
+                <div class="analyzer-grid">
+                    <!-- Control Panel (Input Form) -->
+                    <div class="card card-input">
+                        <h3><i class="fa-solid fa-gears icon-primary"></i> Compound Selection</h3>
+                        
+                        <!-- PubChem Lookup -->
+                        <div class="input-group">
+                            <label for="compound-search">Search Drug by Name (PubChem)</label>
+                            <div class="search-box">
+                                <input type="text" id="compound-search" placeholder="e.g., Aspirin, Donepezil, Imatinib...">
+                                <button onclick="searchCompoundName()" id="search-btn"><i class="fa-solid fa-magnifying-glass"></i></button>
+                            </div>
+                        </div>
+
+                        <div class="divider"><span>OR</span></div>
+
+                        <!-- Direct SMILES -->
+                        <div class="input-group">
+                            <label for="smiles-input">Enter Chemical SMILES String</label>
+                            <input type="text" id="smiles-input" placeholder="e.g., CC(=O)Oc1ccccc1C(=O)O">
+                        </div>
+
+                        <!-- Target selection -->
+                        <div class="input-group">
+                            <label for="target-select">Select Disease Target Protein</label>
+                            <select id="target-select">
+                                <option value="COVID-19_Mpro">SARS-CoV-2 Main Protease (COVID-19)</option>
+                                <option value="Alzheimers_AChE">Acetylcholinesterase (Alzheimer's)</option>
+                                <option value="Cancer_EGFR">Epidermal Growth Factor Receptor (Cancer)</option>
+                            </select>
+                        </div>
+
+                        <button class="btn btn-primary btn-block" onclick="runAnalysis()" id="analyze-btn">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> Predict Bioactivity
+                        </button>
+                    </div>
+
+                    <!-- Predictions result panel -->
+                    <div class="card card-result shadow-glow" id="result-empty-state">
+                        <div class="empty-state-content">
+                            <i class="fa-solid fa-wave-square big-icon"></i>
+                            <h4>Awaiting Chemical Input</h4>
+                            <p>Enter a SMILES or search a compound name, select a therapeutic target, and click "Predict Bioactivity" to begin the machine learning inference.</p>
+                        </div>
+                    </div>
+
+                    <div class="card card-result display-none" id="result-panel">
+                        <div class="result-header">
+                            <div>
+                                <h3 id="res-compound-name">Compound Profile</h3>
+                                <span class="smiles-badge" id="res-smiles-text">SMILES</span>
+                            </div>
+                            <span class="active-badge active" id="res-activity-badge">ACTIVE</span>
+                        </div>
+
+                        <div class="metrics-row">
+                            <div class="metric-box">
+                                <span class="metric-label">Binding Probability</span>
+                                <span class="metric-value text-active" id="res-probability">92.4%</span>
+                                <div class="progress-bar-container">
+                                    <div class="progress-bar-fill active-bg" id="res-probability-bar" style="width: 92.4%"></div>
+                                </div>
+                            </div>
+                            <div class="metric-box">
+                                <span class="metric-label">Recommended Action</span>
+                                <span class="metric-text" id="res-action">Proceed to In-Vitro Screening</span>
+                            </div>
+                        </div>
+
+                        <!-- Visualizers Grid -->
+                        <div class="visualizers-grid">
+                            <div class="viewer-box">
+                                <span class="viewer-title"><i class="fa-solid fa-diagram-project"></i> 2D Layout Schema</span>
+                                <div class="canvas-container">
+                                    <canvas id="mol2d-canvas" width="280" height="200"></canvas>
+                                </div>
+                            </div>
+                            <div class="viewer-box">
+                                <span class="viewer-title"><i class="fa-solid fa-cube"></i> 3D Conformation Model</span>
+                                <div class="mol3d-container" id="mol3d-viewer">
+                                    <!-- 3Dmol.js renders inside here -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Lipinski Rules checks -->
+                        <div class="properties-section">
+                            <h4><i class="fa-solid fa-list-check"></i> Drug-Likeness (Lipinski Rules)</h4>
+                            <div class="lipinski-grid">
+                                <div class="lipinski-item" id="lip-mw">
+                                    <span class="lip-val">325.4 g/mol</span>
+                                    <span class="lip-label">Mol Weight (< 500)</span>
+                                </div>
+                                <div class="lipinski-item" id="lip-logp">
+                                    <span class="lip-val">2.84</span>
+                                    <span class="lip-label">LogP (< 5)</span>
+                                </div>
+                                <div class="lipinski-item" id="lip-hbd">
+                                    <span class="lip-val">2</span>
+                                    <span class="lip-label">HB Donors (< 5)</span>
+                                </div>
+                                <div class="lipinski-item" id="lip-hba">
+                                    <span class="lip-val">5</span>
+                                    <span class="lip-label">HB Acceptors (< 10)</span>
+                                </div>
+                            </div>
+                            <div class="lipinski-status" id="res-lipinski-summary">
+                                Passes Lipinski's Rule of 5 (0 violations)
+                            </div>
+                        </div>
+
+                        <!-- Explainable AI -->
+                        <div class="xai-section">
+                            <h4><i class="fa-solid fa-chart-bar"></i> Explainable AI (XAI) - Morgan Fingerprint Contributions</h4>
+                            <p class="section-desc">Shows which chemical structural substructures (bits) had the largest positive impact on the active prediction score.</p>
+                            <div class="chart-container">
+                                <canvas id="xai-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 2: VIRTUAL SCREENING PORTAL -->
+            <section id="view-screen" class="content-view">
+                <div class="screening-container">
+                    <div class="card">
+                        <h3><i class="fa-solid fa-network-wired icon-primary"></i> High-Throughput Screening Pipeline</h3>
+                        <p>Upload a library of compounds or input a list of chemical structures to run automated machine learning virtual screening against a target disease receptor.</p>
+                        
+                        <div class="screening-controls">
+                            <!-- Direct list input -->
+                            <div class="input-group">
+                                <label for="bulk-smiles">Batch SMILES (One compound per line)</label>
+                                <textarea id="bulk-smiles" rows="6" placeholder="CC(=O)Oc1ccccc1C(=O)O&#10;CN(C)C(=O)Oc1cccc(c1)[C@@H](C)N(C)C&#10;CCCC"></textarea>
+                            </div>
+
+                            <div class="divider"><span>OR</span></div>
+
+                            <!-- File Upload -->
+                            <div class="input-group">
+                                <label>Upload Compound Library File (.csv, .txt)</label>
+                                <div class="file-drop-area" id="file-drop-zone">
+                                    <i class="fa-solid fa-file-arrow-up file-icon"></i>
+                                    <p>Drag and drop your file here, or <span class="file-browse">browse</span></p>
+                                    <span class="file-name-display" id="file-name-text">No file chosen (First column must contain SMILES)</span>
+                                    <input type="file" id="file-uploader" style="display: none;" accept=".csv,.txt">
+                                </div>
+                            </div>
+
+                            <!-- Target and screening trigger -->
+                            <div class="screening-actions">
+                                <div class="input-group" style="flex: 1;">
+                                    <label for="screen-target-select">Screening Target Receptor</label>
+                                    <select id="screen-target-select">
+                                        <option value="COVID-19_Mpro">SARS-CoV-2 Main Protease (COVID-19)</option>
+                                        <option value="Alzheimers_AChE">Acetylcholinesterase (Alzheimer's)</option>
+                                        <option value="Cancer_EGFR">Epidermal Growth Factor Receptor (Cancer)</option>
+                                    </select>
+                                </div>
+                                <button class="btn btn-primary" onclick="runScreening()" id="screen-btn" style="align-self: flex-end; height: 46px;">
+                                    <i class="fa-solid fa-play"></i> Start Virtual Screen
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Progress bar -->
+                    <div class="card display-none" id="screening-progress-card">
+                        <h3>Screening Progress</h3>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar-fill progress-bar-active" id="screen-progress-bar" style="width: 0%"></div>
+                        </div>
+                        <p class="progress-stats" id="screen-progress-text">Processing compound 0 of 0...</p>
+                    </div>
+
+                    <!-- Screening results table -->
+                    <div class="card display-none" id="screening-results-card">
+                        <div class="table-header">
+                            <h3><i class="fa-solid fa-list-ol icon-primary"></i> Virtual Screen Hit List</h3>
+                            <button class="btn btn-secondary btn-sm" onclick="exportCSV()"><i class="fa-solid fa-download"></i> Export CSV Hitlist</button>
+                        </div>
+                        <p class="section-desc">Compounds are sorted by their active prediction probability. Higher probability represents stronger predicted binding/inhibition.</p>
+                        
+                        <div class="table-responsive">
+                            <table class="results-table" id="screen-table">
+                                <thead>
+                                    <tr>
+                                        <th>Rank</th>
+                                        <th>SMILES Compound</th>
+                                        <th>MW</th>
+                                        <th>LogP</th>
+                                        <th>ADMET (SA Score)</th>
+                                        <th>Lipinski Viol.</th>
+                                        <th>Active Prob.</th>
+                                        <th>AI Prediction</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="screen-table-body">
+                                    <!-- Dynamic rows loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 3: TARGET DATABASE -->
+            <section id="view-targets" class="content-view">
+                <div class="targets-container" id="targets-list-container">
+                    <!-- Dynamic target cards loaded from API -->
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="toast">
+        <i class="fa-solid fa-circle-info toast-icon"></i>
+        <span id="toast-message">Message details</span>
+    </div>
+
+    <!-- Scripts -->
+    <script src="src/api.js"></script>
+    <script src="src/mol_viewer.js"></script>
+    <script src="src/ui.js"></script>
+</body>
+</html>

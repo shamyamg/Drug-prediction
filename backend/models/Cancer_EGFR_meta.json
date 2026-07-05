@@ -1,0 +1,15 @@
+{
+    "target_key": "Cancer_EGFR",
+    "target_name": "Epidermal Growth Factor Receptor (EGFR)",
+    "chembl_id": "CHEMBL203",
+    "description": "Receptor tyrosine kinase frequently mutated or overexpressed in non-small cell lung cancer.",
+    "dataset_size": 212,
+    "actives_count": 19,
+    "inactives_count": 193,
+    "metrics": {
+        "accuracy": 0.907,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+    }
+}
