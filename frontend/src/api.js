@@ -4,7 +4,7 @@
    ========================================================================== */
 
 // Inbuilt Production Backend URL on Render
-const DEFAULT_PRODUCTION_API_URL = "https://pharmai-drug-prediction-api.onrender.com";
+const DEFAULT_PRODUCTION_API_URL = "https://pharmai-backend-1si8.onrender.com";
 
 const ApiClient = {
     /**
