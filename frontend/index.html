@@ -49,9 +49,10 @@
             </nav>
 
             <div class="sidebar-footer">
-                <div class="status-indicator">
+                <div class="status-indicator clickable" id="api-status-indicator" onclick="openApiModal()" title="Click to configure backend API connection">
                     <span class="pulse-dot green" id="api-status-dot"></span>
-                    <span id="api-status-text">Connecting to Backend...</span>
+                    <span id="api-status-text">Connecting...</span>
+                    <i class="fa-solid fa-gear status-gear-icon"></i>
                 </div>
             </div>
         </aside>
@@ -286,6 +287,45 @@
                 </div>
             </section>
         </main>
+    </div>
+
+    <!-- Backend Server Configuration Modal -->
+    <div id="api-modal" class="modal-backdrop display-none">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-server icon-primary"></i> Backend Server Settings</h3>
+                <button class="modal-close" onclick="closeApiModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-description">
+                    Connect this frontend to your deployed Render backend (or local development server).
+                </p>
+                <div class="input-group" style="margin-top: 16px; margin-bottom: 8px;">
+                    <label for="api-url-input">API Base URL</label>
+                    <input type="text" id="api-url-input" placeholder="e.g. https://your-service.onrender.com">
+                </div>
+                <div class="quick-presets">
+                    <span>Quick presets:</span>
+                    <button type="button" class="btn-preset" onclick="setPresetUrl('http://127.0.0.1:8000')">Localhost:8000</button>
+                    <button type="button" class="btn-preset" onclick="setPresetUrl('https://pharmai-drug-prediction-api.onrender.com')">Render API</button>
+                </div>
+                <div id="modal-test-status" class="modal-test-status display-none"></div>
+                <div class="callout callout-info" style="margin-top: 16px;">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div>
+                        <strong>Render Free Tier Note:</strong> Render free Web Services spin down when idle. The first request after sleep may take ~30–50 seconds to wake up.
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary btn-sm" onclick="testModalApiConnection()" id="btn-test-api">
+                    <i class="fa-solid fa-satellite-dish"></i> Test Connection
+                </button>
+                <button class="btn btn-primary btn-sm" onclick="saveModalApiUrl()" id="btn-save-api">
+                    <i class="fa-solid fa-check"></i> Save & Connect
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- Notification Toast -->

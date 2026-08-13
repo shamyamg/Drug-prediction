@@ -1,22 +1,80 @@
 /* ==========================================================================
    PharmAI API Client Library
+   Supports dynamic backend switching (Localhost & Deployed Cloud URLs)
    ========================================================================== */
 
-const API_BASE_URL = "http://127.0.0.1:8000";
-
 const ApiClient = {
+    /**
+     * Retrieves current active API Base URL.
+     */
+    getBaseUrl() {
+        const customUrl = localStorage.getItem("PHARMAI_API_URL");
+        if (customUrl && customUrl.trim()) {
+            return customUrl.trim().replace(/\/+$/, "");
+        }
+        
+        // Auto-detect local vs deployed environment
+        const hostname = window.location.hostname;
+        if (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "") {
+            return "http://127.0.0.1:8000";
+        }
+        
+        // Default cloud backend fallback (if configured) or relative path
+        return localStorage.getItem("PHARMAI_API_URL") || "http://127.0.0.1:8000";
+    },
+
+    /**
+     * Updates and saves the API Base URL.
+     */
+    setBaseUrl(url) {
+        if (!url || !url.trim()) {
+            localStorage.removeItem("PHARMAI_API_URL");
+        } else {
+            let cleanUrl = url.trim().replace(/\/+$/, "");
+            if (!cleanUrl.startsWith("http://") && !cleanUrl.startsWith("https://")) {
+                cleanUrl = "https://" + cleanUrl;
+            }
+            localStorage.setItem("PHARMAI_API_URL", cleanUrl);
+        }
+    },
+
+    /**
+     * Internal helper to make fetch requests with configurable timeout.
+     */
+    async fetchWithTimeout(resource, options = {}) {
+        const { timeout = 15000, ...fetchOptions } = options;
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), timeout);
+
+        try {
+            const response = await fetch(resource, {
+                ...fetchOptions,
+                signal: controller.signal
+            });
+            clearTimeout(id);
+            return response;
+        } catch (error) {
+            clearTimeout(id);
+            if (error.name === 'AbortError') {
+                throw new Error("Request timed out. If using Render free tier, the backend might be waking up from sleep (can take up to 50s).");
+            }
+            throw error;
+        }
+    },
+
     /**
      * Checks if the backend API is online.
      */
     async checkStatus() {
         try {
-            const response = await fetch(`${API_BASE_URL}/`, { method: "GET", timeout: 3000 });
+            const baseUrl = this.getBaseUrl();
+            const response = await this.fetchWithTimeout(`${baseUrl}/`, { method: "GET", timeout: 5000 });
             if (response.ok) {
-                return true;
+                return { online: true, url: baseUrl };
             }
-            return false;
+            return { online: false, url: baseUrl };
         } catch (e) {
-            return false;
+            return { online: false, url: this.getBaseUrl(), error: e.message };
         }
     },
 
@@ -24,11 +82,16 @@ const ApiClient = {
      * Fetches metadata for all trained machine learning target models.
      */
     async getTargets() {
+        const baseUrl = this.getBaseUrl();
         try {
-            const response = await fetch(`${API_BASE_URL}/api/targets`);
+            const response = await this.fetchWithTimeout(`${baseUrl}/api/targets`, { timeout: 15000 });
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.detail || "Failed to fetch targets.");
+                let errorMsg = "Failed to fetch targets.";
+                try {
+                    const error = await response.json();
+                    errorMsg = error.detail || errorMsg;
+                } catch (_) {}
+                throw new Error(errorMsg);
             }
             return await response.json();
         } catch (e) {
@@ -43,18 +106,24 @@ const ApiClient = {
      * @param {string} target 
      */
     async predict(smiles, target) {
+        const baseUrl = this.getBaseUrl();
         try {
-            const response = await fetch(`${API_BASE_URL}/api/predict`, {
+            const response = await this.fetchWithTimeout(`${baseUrl}/api/predict`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
                 },
-                body: JSON.stringify({ smiles, target })
+                body: JSON.stringify({ smiles, target }),
+                timeout: 20000
             });
             
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.detail || "Failed to predict compound bioactivity.");
+                let errorMsg = "Failed to predict compound bioactivity.";
+                try {
+                    const error = await response.json();
+                    errorMsg = error.detail || errorMsg;
+                } catch (_) {}
+                throw new Error(errorMsg);
             }
             return await response.json();
         } catch (e) {
@@ -69,18 +138,24 @@ const ApiClient = {
      * @param {string} target 
      */
     async screen(smilesList, target) {
+        const baseUrl = this.getBaseUrl();
         try {
-            const response = await fetch(`${API_BASE_URL}/api/screen`, {
+            const response = await this.fetchWithTimeout(`${baseUrl}/api/screen`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
                 },
-                body: JSON.stringify({ smiles_list: smilesList, target })
+                body: JSON.stringify({ smiles_list: smilesList, target }),
+                timeout: 60000
             });
             
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.detail || "Screening request failed.");
+                let errorMsg = "Screening request failed.";
+                try {
+                    const error = await response.json();
+                    errorMsg = error.detail || errorMsg;
+                } catch (_) {}
+                throw new Error(errorMsg);
             }
             return await response.json();
         } catch (e) {
@@ -95,19 +170,25 @@ const ApiClient = {
      * @param {string} target 
      */
     async screenFile(file, target) {
+        const baseUrl = this.getBaseUrl();
         try {
             const formData = new FormData();
             formData.append("file", file);
             formData.append("target", target);
             
-            const response = await fetch(`${API_BASE_URL}/api/screen-file`, {
+            const response = await this.fetchWithTimeout(`${baseUrl}/api/screen-file`, {
                 method: "POST",
-                body: formData
+                body: formData,
+                timeout: 90000
             });
             
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.detail || "File screening failed.");
+                let errorMsg = "File screening failed.";
+                try {
+                    const error = await response.json();
+                    errorMsg = error.detail || errorMsg;
+                } catch (_) {}
+                throw new Error(errorMsg);
             }
             return await response.json();
         } catch (e) {
@@ -121,11 +202,16 @@ const ApiClient = {
      * @param {string} name 
      */
     async lookupCompound(name) {
+        const baseUrl = this.getBaseUrl();
         try {
-            const response = await fetch(`${API_BASE_URL}/api/lookup?name=${encodeURIComponent(name)}`);
+            const response = await this.fetchWithTimeout(`${baseUrl}/api/lookup?name=${encodeURIComponent(name)}`, { timeout: 15000 });
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.detail || `Compound '${name}' not found.`);
+                let errorMsg = `Compound '${name}' not found.`;
+                try {
+                    const error = await response.json();
+                    errorMsg = error.detail || errorMsg;
+                } catch (_) {}
+                throw new Error(errorMsg);
             }
             return await response.json();
         } catch (e) {

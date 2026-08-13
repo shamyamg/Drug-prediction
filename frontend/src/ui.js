@@ -54,19 +54,116 @@ function switchTab(tabName) {
  * Check backend API status and update the connection indicator.
  */
 async function checkBackendConnection() {
-    const isOnline = await ApiClient.checkStatus();
     const dot = document.getElementById("api-status-dot");
     const text = document.getElementById("api-status-text");
     
-    if (isOnline) {
+    text.innerText = "Checking API...";
+    
+    const status = await ApiClient.checkStatus();
+    
+    if (status.online) {
         dot.className = "pulse-dot green";
-        text.innerText = "Backend API: Online";
-        showToast("Connected to PharmAI ML Backend", "info");
+        text.innerText = "API: Online";
+        showToast(`Connected to backend (${status.url})`, "info");
     } else {
         dot.className = "pulse-dot red";
-        text.innerText = "Backend API: Offline";
-        showToast("Backend connection failed. Make sure app.py is running.", "warning");
+        text.innerText = "API: Offline (Click to configure)";
+        showToast("Backend offline. Click status in sidebar to configure Render URL.", "warning");
     }
+    return status;
+}
+
+/**
+ * Open the Backend Server Settings modal.
+ */
+function openApiModal() {
+    const modal = document.getElementById("api-modal");
+    const input = document.getElementById("api-url-input");
+    const statusDiv = document.getElementById("modal-test-status");
+    
+    input.value = ApiClient.getBaseUrl();
+    statusDiv.className = "modal-test-status display-none";
+    statusDiv.innerText = "";
+    modal.classList.remove("display-none");
+}
+
+/**
+ * Close the Backend Server Settings modal.
+ */
+function closeApiModal() {
+    const modal = document.getElementById("api-modal");
+    modal.classList.add("display-none");
+}
+
+/**
+ * Quick preset URL setter.
+ */
+function setPresetUrl(url) {
+    const input = document.getElementById("api-url-input");
+    input.value = url;
+}
+
+/**
+ * Test the API connection from inside the modal.
+ */
+async function testModalApiConnection() {
+    const input = document.getElementById("api-url-input");
+    const statusDiv = document.getElementById("modal-test-status");
+    const testBtn = document.getElementById("btn-test-api");
+    
+    let targetUrl = input.value.trim().replace(/\/+$/, "");
+    if (!targetUrl) {
+        targetUrl = "http://127.0.0.1:8000";
+    }
+    if (!targetUrl.startsWith("http://") && !targetUrl.startsWith("https://")) {
+        targetUrl = "https://" + targetUrl;
+    }
+    
+    testBtn.disabled = true;
+    testBtn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> Testing...`;
+    statusDiv.className = "modal-test-status testing";
+    statusDiv.innerText = `Pinging ${targetUrl}... (If using free Render tier, wake-up can take up to 50s)`;
+    
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 45000);
+        
+        const response = await fetch(`${targetUrl}/`, {
+            method: "GET",
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        
+        if (response.ok) {
+            const data = await response.json();
+            statusDiv.className = "modal-test-status success";
+            statusDiv.innerHTML = `<i class="fa-solid fa-circle-check"></i> Connected successfully! Service: ${data.service || "Online"}`;
+        } else {
+            statusDiv.className = "modal-test-status error";
+            statusDiv.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> Server replied with HTTP status ${response.status}.`;
+        }
+    } catch (e) {
+        statusDiv.className = "modal-test-status error";
+        statusDiv.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Could not connect (${e.message || "Failed to fetch"}). Ensure the Render Web Service is running and CORS is enabled.`;
+    } finally {
+        testBtn.disabled = false;
+        testBtn.innerHTML = `<i class="fa-solid fa-satellite-dish"></i> Test Connection`;
+    }
+}
+
+/**
+ * Save the entered API URL and reconnect.
+ */
+async function saveModalApiUrl() {
+    const input = document.getElementById("api-url-input");
+    const url = input.value.trim();
+    
+    ApiClient.setBaseUrl(url);
+    closeApiModal();
+    showToast("API URL saved. Reconnecting...", "info");
+    
+    await checkBackendConnection();
+    await loadTargetsView();
 }
 
 /**
@@ -498,3 +595,9 @@ window.searchCompoundName = searchCompoundName;
 window.runScreening = runScreening;
 window.exportCSV = exportCSV;
 window.loadScreenedIntoAnalyzer = loadScreenedIntoAnalyzer;
+window.openApiModal = openApiModal;
+window.closeApiModal = closeApiModal;
+window.setPresetUrl = setPresetUrl;
+window.testModalApiConnection = testModalApiConnection;
+window.saveModalApiUrl = saveModalApiUrl;
+window.checkBackendConnection = checkBackendConnection;
