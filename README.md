@@ -1,4 +1,4 @@
-Click here to visit website :https://drug-prediction-tp4b.vercel.app/
+Click here to visit website :https://pharm-ai-one.vercel.app/
 # PharmAI: ML-Powered Drug Discovery & Virtual Screening Platform
 
 **PharmAI** is a machine learning-based computer-aided drug discovery (CADD) platform designed for virtual high-throughput screening and molecular analysis. This project simulates the early-stage pipeline of discovering active chemical agents (ligands) against key disease therapeutic target proteins.
