@@ -1,7 +1,10 @@
 /* ==========================================================================
    PharmAI API Client Library
-   Supports dynamic backend switching (Localhost & Deployed Cloud URLs)
+   Supports automatic production backend linking (Render & Localhost)
    ========================================================================== */
+
+// Inbuilt Production Backend URL on Render
+const DEFAULT_PRODUCTION_API_URL = "https://pharmai-drug-prediction-api.onrender.com";
 
 const ApiClient = {
     /**
@@ -13,14 +16,14 @@ const ApiClient = {
             return customUrl.trim().replace(/\/+$/, "");
         }
         
-        // Auto-detect local vs deployed environment
+        // Auto-detect local environment
         const hostname = window.location.hostname;
         if (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "") {
             return "http://127.0.0.1:8000";
         }
         
-        // Default cloud backend fallback (if configured) or relative path
-        return localStorage.getItem("PHARMAI_API_URL") || "http://127.0.0.1:8000";
+        // When deployed live on Vercel / internet, automatically use Render backend
+        return DEFAULT_PRODUCTION_API_URL;
     },
 
     /**
